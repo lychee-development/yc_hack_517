@@ -9,3 +9,8 @@ dependencies = [
     "numpy>=2.2.5",
     "python-dotenv>=1.1.0",
 ]
+
+[tool.uv.workspace]
+members = [
+    "demo/ny_voting",
+]
