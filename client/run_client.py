@@ -6,8 +6,10 @@ import asyncio
 from pydantic import AnyUrl
 from contextlib import AsyncExitStack
 
-async def run_client(mcp_session: ClientSession, features: list[list[str]], num_turns: int):
+async def run_client(mcp_session: ClientSession, num_turns: int):
     people = []
+    features = await mcp_session.read_resource("resource://init")
+    print(features)
     for feature_set in features:
         people.append(PersonV2(feature_set))
         await people[-1].generate_sys_prompt(mcp_session)
@@ -42,7 +44,7 @@ async def main():
         await mcp_session.initialize()
         
         # Run the client with the session
-        await run_client(mcp_session, [["Democrat"]], 2)
+        await run_client(mcp_session, 2)
     finally:
         await exit_stack.aclose()
 
