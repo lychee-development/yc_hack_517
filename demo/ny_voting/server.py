@@ -1,8 +1,75 @@
 from fastmcp import FastMCP, Context
 from fastmcp.prompts.prompt import Message
+from datetime import datetime, timedelta
+import os
+import asyncio
+from exa_py import Exa
 
 # Create the FastMCP server
 mcp = FastMCP(name="NY Elections Server")
+
+timestep = 1
+
+
+# Get API key from environment or use the provided key
+# In production, this should be stored in an environment variable
+EXA_API_KEY = os.environ.get("EXA_API_KEY", "22343957-5cae-403f-b6cd-e52c93d6fa07")
+
+# Initialize Exa client
+exa = Exa(EXA_API_KEY)
+
+# Tool for searching news about NYC elections
+@mcp.tool()
+async def search_election_news(query: str, days_back: int = 50, max_results: int = 5, ctx: Context = None) -> dict:
+    """Search for relevant news and articles about NYC elections or related topics.
+
+    Args:
+        query: The search query to find news about NYC elections
+        days_back: How many days back to search for news
+        max_results: Maximum number of results to return
+
+    Returns:
+        A dictionary containing search results and snippets
+    """
+    # Calculate date ranges
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days_back)
+
+    # Format dates for Exa API
+    end_published_date = end_date.strftime("%Y-%m-%d")
+    start_published_date = start_date.strftime("%Y-%m-%d")
+
+    # Log the search if context is available
+    if ctx:
+        await ctx.info(f"Searching for news: '{query}' from {start_published_date} to {end_published_date}")
+
+    # Search for articles using Exa API
+    search_results = exa.search_and_contents(
+        query,
+        start_published_date=start_published_date,
+        end_published_date=end_published_date,
+        num_results=max_results,
+        text=True
+    )
+
+    # Process results to include important info and limit content length
+    processed_results = []
+    for result in search_results.get("results", []):
+        processed_result = {
+            "title": result.get("title", "No title"),
+            "url": result.get("url", ""),
+            "published_date": result.get("published_date", ""),
+            "source": result.get("source", {}).get("domain", "Unknown source"),
+            "snippet": result.get("text", "")[:500] + "..." if len(result.get("text", "")) > 500 else result.get("text", "")
+        }
+        processed_results.append(processed_result)
+
+    return {
+        "query": query,
+        "time_range": f"{start_published_date} to {end_published_date}",
+        "results_count": len(processed_results),
+        "results": processed_results
+    }
 
 # Init resource function that returns a hardcoded JSON dictionary
 @mcp.resource("resource://init")
@@ -38,7 +105,10 @@ def init() -> dict:
 @mcp.resource("resource://next_timestep")
 def next_timestep() -> str:
     """Advance the simulation to the next time step."""
-    return "Hello world"
+    res = f"context and the current timestep is {timestep}"
+    global timestep
+    timestep += 1
+    return res
 
 # Prompts to explain demographic info - names match exactly with demographics
 @mcp.prompt(name="Democrat")
