@@ -11,8 +11,11 @@ import random
 async def run_client(mcp_session: ClientSession, num_people: int, num_turns: int):
     people = []
     features = await mcp_session.read_resource("resource://init")
-    features = json.loads(features.contents[0].text)['demographic_info']
-    
+    features_json = json.loads(features.contents[0].text)
+    features = features_json['demographic_info']
+    base_prompt= features_json['context']
+    print(base_prompt)
+
     for _ in range(num_people):
         # Sample a feature from each category based on probabilities
         sampled_features = []
@@ -34,7 +37,7 @@ async def run_client(mcp_session: ClientSession, num_people: int, num_turns: int
         # Create a person with the sampled features
         people.append(PersonV2(sampled_features))
         
-        await people[-1].generate_sys_prompt(mcp_session)
+        await people[-1].generate_sys_prompt(base_prompt, mcp_session)
     
     # Use the correct URI format for read_resource
     next_turn_uri = "resource://next_timestep"

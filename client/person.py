@@ -22,9 +22,9 @@ class PersonV2:
         self.memory = ""  # Initialize memory as empty string
         self.id = uuid.uuid4()  # Add id for consistency with Person class
 
-    async def generate_sys_prompt(self, mcp_session: ClientSession):
+    async def generate_sys_prompt(self, base_prompt, mcp_session: ClientSession):
 
-        prompt = " You are helpful. "
+        prompt = base_prompt
         for f in self.features:
             feature_prompt = await mcp_session.get_prompt(f)
             prompt += str(feature_prompt.messages[0].content.text)
