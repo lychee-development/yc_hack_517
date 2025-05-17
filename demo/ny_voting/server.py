@@ -8,8 +8,8 @@ from exa_py import Exa
 # Create the FastMCP server
 mcp = FastMCP(name="NY Elections Server")
 
-timestep = 1
-
+timestep = 0
+start_date = datetime(2025, 5, 10)  # May 10th, 2025
 
 # Get API key from environment or use the provided key
 # In production, this should be stored in an environment variable
@@ -20,34 +20,33 @@ exa = Exa(EXA_API_KEY)
 
 # Tool for searching news about NYC elections
 @mcp.tool()
-async def search_election_news(query: str, days_back: int = 50, max_results: int = 5, ctx: Context = None) -> dict:
+async def search_election_news(query: str, max_results: int = 5, ctx: Context = None) -> dict:
     """Search for relevant news and articles about NYC elections or related topics.
 
     Args:
         query: The search query to find news about NYC elections
-        days_back: How many days back to search for news
         max_results: Maximum number of results to return
 
     Returns:
         A dictionary containing search results and snippets
     """
-    # Calculate date ranges
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days_back)
+    global timestep
 
-    # Format dates for Exa API
-    end_published_date = end_date.strftime("%Y-%m-%d")
-    start_published_date = start_date.strftime("%Y-%m-%d")
+    # Calculate the current date based on the timestep
+    current_date = start_date + timedelta(days=timestep - 1)
+
+    # Format date for Exa API
+    current_date_str = current_date.strftime("%Y-%m-%d")
 
     # Log the search if context is available
     if ctx:
-        await ctx.info(f"Searching for news: '{query}' from {start_published_date} to {end_published_date}")
+        await ctx.info(f"Searching for news: '{query}' on {current_date_str}")
 
-    # Search for articles using Exa API
+    # Search for articles using Exa API - search for the specific date
     search_results = exa.search_and_contents(
         query,
-        start_published_date=start_published_date,
-        end_published_date=end_published_date,
+        start_published_date=current_date_str,
+        end_published_date=current_date_str,
         num_results=max_results,
         text=True
     )
@@ -66,7 +65,7 @@ async def search_election_news(query: str, days_back: int = 50, max_results: int
 
     return {
         "query": query,
-        "time_range": f"{start_published_date} to {end_published_date}",
+        "date": current_date_str,
         "results_count": len(processed_results),
         "results": processed_results
     }
@@ -98,16 +97,22 @@ def init() -> dict:
                 ["Staten Island", 6]
             ]
         ],
-        "options": ["Eric", "Curtis", "Maya"]
+        "options": ["Andrew Cuomo", "Zohran Mamdani", "Eric Adams", "Curtis Sliwa"]
     }
 
 # Next timestep resource
 @mcp.resource("resource://next_timestep")
 def next_timestep() -> str:
     """Advance the simulation to the next time step."""
-    res = f"context and the current timestep is {timestep}"
     global timestep
+
+    # Increment timestep first
     timestep += 1
+
+    # Calculate the current date based on the timestep
+    date = (start_date + timedelta(days=timestep - 1)).strftime("%Y-%m-%d")
+
+    res = f"The current day is {date}, news searches will be for this specific date."
     return res
 
 # Prompts to explain demographic info - names match exactly with demographics
@@ -249,12 +254,3 @@ def staten_island() -> str:
     - Contains a higher percentage of white voters than other boroughs
     - Often feels disconnected from the rest of NYC
     - Focuses on transportation, property taxes, and maintaining neighborhood character"""
-
-if __name__ == "__main__":
-    # Run with Streamable HTTP transport instead of default STDIO
-    mcp.run(
-        transport="streamable-http",
-        host="0.0.0.0",  # Allow connections from any IP
-        port=8000,       # Use port 8000
-        path="/mcp"      # Set the endpoint path
-    )
