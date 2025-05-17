@@ -181,4 +181,10 @@ def staten_island() -> str:
     - Focuses on transportation, property taxes, and maintaining neighborhood character"""
 
 if __name__ == "__main__":
-    mcp.run()
+    # Run with Streamable HTTP transport instead of default STDIO
+    mcp.run(
+        transport="streamable-http",
+        host="0.0.0.0",  # Allow connections from any IP
+        port=8000,       # Use port 8000
+        path="/mcp"      # Set the endpoint path
+    )
