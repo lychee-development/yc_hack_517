@@ -103,11 +103,6 @@ class PersonV2:
                         self.decision = tool_args["decision"]
                         result_content = "Decision made: " + self.decision
                     else:
-                        # Add id to tool arguments TODO this may not work - if the tool args are not a dict we need to debugging this.
-                        if isinstance(tool_args, dict):
-                            tool_args["id"] = str(self.id)
-                        
-
                         result = await mcp_session.call_tool(tool_name, tool_args)
                         result_content = result.content
                       
