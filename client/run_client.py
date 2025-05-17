@@ -5,13 +5,35 @@ import concurrent.futures
 import asyncio
 from pydantic import AnyUrl
 from contextlib import AsyncExitStack
+import json
+import random
 
-async def run_client(mcp_session: ClientSession, num_turns: int):
+async def run_client(mcp_session: ClientSession, num_people: int, num_turns: int):
     people = []
     features = await mcp_session.read_resource("resource://init")
-    print(features)
-    for feature_set in features:
-        people.append(PersonV2(feature_set))
+    features = json.loads(features.contents[0].text)['demographic_info']
+    
+    for _ in range(num_people):
+        # Sample a feature from each category based on probabilities
+        sampled_features = []
+        for feature_category in features:
+            # Extract feature names and their probabilities
+            feature_names = [item[0] for item in feature_category]
+            probabilities = [item[1] for item in feature_category]
+            
+            # Normalize probabilities to ensure they sum to 100
+            total = sum(probabilities)
+            normalized_probs = [p/total for p in probabilities]
+            
+            # Sample one feature based on the probabilities
+            selected_feature = random.choices(feature_names, weights=normalized_probs, k=1)[0]
+            
+            # Add to feature list
+            sampled_features.append(selected_feature)
+        
+        # Create a person with the sampled features
+        people.append(PersonV2(sampled_features))
+        
         await people[-1].generate_sys_prompt(mcp_session)
     
     # Use the correct URI format for read_resource
@@ -44,7 +66,7 @@ async def main():
         await mcp_session.initialize()
         
         # Run the client with the session
-        await run_client(mcp_session, 2)
+        await run_client(mcp_session, 2, 1)
     finally:
         await exit_stack.aclose()
 

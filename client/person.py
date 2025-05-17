@@ -55,10 +55,7 @@ class PersonV2:
             tool_schema = {
                 "name": tool.name,
                 "description": tool.description,
-                "input_schema": {
-                    "type": "object",
-                    "properties": tool.inputSchema
-                }
+                "input_schema": tool.inputSchema
             }
             available_tools.append(tool_schema)
 
@@ -73,7 +70,6 @@ class PersonV2:
                 "required": ["decision"]
             }
         })
-        
         # Track the full conversation history
         conversation_history = messages.copy()
         
