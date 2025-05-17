@@ -24,7 +24,14 @@ class PersonV2:
         return f"""
         You are a helpful assistant.
         """
-    
+        prompt = ""
+        for f in self.features:
+            feature_prompt = mcp_session.get_prompt(f)
+            prompt += feature_prompt
+            prompt += "\n"
+
+        self.sys_prompt = prompt 
+
     async def call_llm(self, mcp_session: ClientSession, ctx: str):
         """ Makes an LLM call with the mcp server and context.
             Loops until there are no more tool calls, then updates memory.
