@@ -1,9 +1,7 @@
 # 1000 minds: Simulating Societies with MCPs
 
-<div align="center">
-  <img src="https://i.ibb.co/27XqyD2D/logo2.jpg" alt="logo" width="350"/>
-</div>
 
+![logo](https://i.ibb.co/27XqyD2D/logo2.jpg)
 ## Inspiration
 With MCP, we can give an agent access to shared resources and actions. But what if instead of one agent, we released a thousand, each interacting, reacting, and influencing one another? From elections and market dynamics to social media predictions, 1000minds can simulate entire societies responding realistically to any scenario you can imagine.
 
