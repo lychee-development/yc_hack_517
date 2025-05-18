@@ -22,14 +22,16 @@ class PersonV2:
         self.temp = temp
         self.max_tokens = max_tokens
         self.anthropic = AsyncAnthropic()
-        self.decision = ""
+        self.decision = "Undecided"
         self.sys_prompt = ""
         self.memory = ""  # Initialize memory as empty string
+        self.options = []
         self.id = uuid.uuid4()  # Add id for consistency with Person class
 
-    async def generate_sys_prompt(self, base_prompt, mcp_session: ClientSession):
-
+    async def generate_sys_prompt(self, base_prompt, mcp_session: ClientSession, options):
+        self.options = options
         prompt = base_prompt
+        base_prompt += f"\n You have the following options: {options}"
         for f in self.features:
             feature_prompt = await mcp_session.get_prompt(f)
             prompt += str(feature_prompt.messages[0].content.text)
@@ -118,8 +120,11 @@ class PersonV2:
                     print(tool_name)
                     print(tool_args)
                     if tool_name == "make_decision":
-                        self.decision = tool_args["decision"]
-                        result_content = "Decision made: " + self.decision
+                        if tool_args["decision"] not in self.options:
+                            result_content = f"Not a valid decision. Valid decisions are {self.options}"
+                        else:
+                            self.decision = tool_args["decision"]
+                            result_content = "Decision made: " + self.decision
                     else:
                         try:
                             result = await mcp_session.call_tool(tool_name, tool_args)

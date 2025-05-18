@@ -76,7 +76,7 @@ async def init(request: InitRequest):
         features_json = json.loads(features.contents[0].text)
         demographic_features = features_json['demographic_info']
         base_prompt = features_json['context']
-        
+        options = ["Andrew Cuomo", "Zohran Mamdani", "Eric Adams", "Curtis Sliwa", "Undecided"] # Should update to get this from mcp resource
         for i in range(request.num_people):
             # Sample features for each person
             sampled_features = []
@@ -94,7 +94,7 @@ async def init(request: InitRequest):
             
             # Create a new person with sampled features
             person = PersonV2(sampled_features)
-            await person.generate_sys_prompt(base_prompt, mcp_session)
+            await person.generate_sys_prompt(base_prompt, mcp_session, options)
             people.append(person)
         
         # Prepare response with person IDs and their features
