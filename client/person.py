@@ -1,11 +1,16 @@
 import uuid
 import numpy as np
-from anthropic import Anthropic
+import logging
+from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 from base_prompts import memory_prompt
 from mcp import ClientSession
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # TODO should be accessing resources?
 
@@ -16,7 +21,7 @@ class PersonV2:
         self.memory_model = memory_model
         self.temp = temp
         self.max_tokens = max_tokens
-        self.anthropic = Anthropic()
+        self.anthropic = AsyncAnthropic()
         self.decision = ""
         self.sys_prompt = ""
         self.memory = ""  # Initialize memory as empty string
@@ -73,9 +78,16 @@ class PersonV2:
         # Track the full conversation history
         conversation_history = messages.copy()
         
-        while True:
+        # Add loop counter to limit iterations
+        loop_count = 0
+        max_loops = 4
+        
+        while loop_count < max_loops:
+            # Increment loop counter
+            loop_count += 1
+            
             # Make API call to Claude
-            response = self.anthropic.messages.create(
+            response = await self.anthropic.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 messages=messages,
@@ -96,15 +108,24 @@ class PersonV2:
                     
                     # Execute tool call
                     tool_name = content.name
-                    tool_args = content.input
+                    # Handle both dictionary and object formats for tool arguments
+                    if hasattr(content.input, '__getitem__'):
+                        tool_args = content.input  # Already a dict-like object
+                    else:
+                        # Convert object to dict if it has attributes but not dict access
+                        tool_args = vars(content.input) if hasattr(content.input, '__dict__') else content.input
 
-
+                    print(tool_name)
+                    print(tool_args)
                     if tool_name == "make_decision":
                         self.decision = tool_args["decision"]
                         result_content = "Decision made: " + self.decision
                     else:
-                        result = await mcp_session.call_tool(tool_name, tool_args)
-                        result_content = result.content
+                        try:
+                            result = await mcp_session.call_tool(tool_name, tool_args)
+                            result_content = result.content
+                        except:
+                            result_content = "Tool call failed. Don't try again."
                       
                     # Add assistant message with tool call to messages
                     messages.append({
@@ -136,13 +157,22 @@ class PersonV2:
                     "content": assistant_message_content
                 })
                 break
+                
+        # If we reached the maximum number of loops, add a note about it
+        if loop_count >= max_loops and has_tool_calls:
+            logger.warning(f"Maximum number of tool call loops ({max_loops}) reached for person {self.id}")
+            # Add the last assistant message to conversation history if it wasn't added
+            conversation_history.append({
+                "role": "assistant",
+                "content": assistant_message_content
+            })
         
         # Update memory with the conversation history
-        new_memory = self.update(conversation_history)
+        new_memory = await self.update(conversation_history)
         
         return (self.decision, new_memory)
 
-    def update(self, llm_call_sequence):
+    async def update(self, llm_call_sequence):
         """ Updates the person's memory. This function should parse the LLM call result,
         and update the history instance attribute.
 
@@ -180,7 +210,7 @@ class PersonV2:
                 conversation_text += f"{role.capitalize()}: {content}\n\n"
         
         # Use the memory model to generate a memory from the conversation
-        memory_response = self.anthropic.messages.create(
+        memory_response = await self.anthropic.messages.create(
             model=self.memory_model,
             max_tokens=1024,
             messages=[
